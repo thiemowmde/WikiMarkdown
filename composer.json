@@ -2,15 +2,15 @@
 	"name": "mediawiki/wikimarkdown",
 	"description": "Markdown syntax for MediaWiki",
 	"require": {
-		"erusev/parsedown": "^1.8.0-beta-7",
-		"erusev/parsedown-extra": "^0.8.1",
-		"benjaminhoegh/parsedown-extended": "1.1.2"
+		"erusev/parsedown": "^1.8.0",
+		"erusev/parsedown-extra": "^0.9.0",
+		"benjaminhoegh/parsedown-extended": "^2.3.0"
 	},
 	"require-dev": {
-		"mediawiki/mediawiki-codesniffer": "31.0.0",
-		"mediawiki/minus-x": "1.1.0",
-		"php-parallel-lint/php-console-highlighter": "0.5.0",
-		"php-parallel-lint/php-parallel-lint": "1.2.0"
+		"mediawiki/mediawiki-codesniffer": "^52.0.1",
+		"mediawiki/minus-x": "^2.0.1",
+		"php-parallel-lint/php-console-highlighter": "^1.0.0",
+		"php-parallel-lint/php-parallel-lint": "^1.4.0"
 	},
 	"license": "MIT",
 	"authors": [

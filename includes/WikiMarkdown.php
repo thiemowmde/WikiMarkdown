@@ -1,5 +1,15 @@
 <?php
 
+use BenjaminHoegh\ParsedownExtended\ParsedownExtended;
+use MediaWiki\Extension\Math\HookHandlers\ParserHooksHandler;
+use MediaWiki\Html\Html;
+use MediaWiki\Linker\Linker;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Parser\ParserOutputFlags;
+use MediaWiki\ResourceLoader\ResourceLoader;
+use MediaWiki\SyntaxHighlight\SyntaxHighlight;
+use MediaWiki\Title\Title;
+
 class WikiMarkdown {
 
 	/** @var string CSS class for markdown code. */
@@ -36,7 +46,9 @@ class WikiMarkdown {
 	 */
 	public static function parserHook( $text, $args, $parser ) {
 		global $wgAllowMarkdownExtended;
-		
+
+		$services = MediaWikiServices::getInstance();
+
 		// Replace strip markers (For e.g. {{#tag:markdown|<nowiki>...}})
 		$out = $parser->getStripState()->unstripNoWiki( $text );
 
@@ -72,7 +84,7 @@ class WikiMarkdown {
 		$refers = [];
 		$out = preg_replace_callback(
 			'/<h([1-6])(\s+id="(.*)")?>(.*)<\/h\1>/isU',
-			function ($matches) use (&$refers) {
+			function ( $matches ) use ( $services, &$refers ) {
 				// Create an anchor id from the heading text or id (if found)
 				$anchor = 'markdown_' . (empty($matches[2]) ? Sanitizer::escapeIdForAttribute($matches[4]) : html_entity_decode($matches[3]));
 				// Ensure that anchors are unique
@@ -83,23 +95,31 @@ class WikiMarkdown {
 				} else {
 					$refers[$anchor] = true;
 				}
-				return Linker::makeHeadline($matches[1], '>', $anchor, $matches[4], '');
+				return Html::rawElement( "h$matches[1]", [],
+					Html::rawElement( 'span', [ 'class' => 'mw-headline', 'id' => $anchor ],
+						$matches[4]
+					)
+				);
 			},
 			$out
 		);
 		
 		// If SyntaxHighlight is loaded, then use it to perform syntax highlighting
 		if ( ExtensionRegistry::getInstance()->isLoaded( 'SyntaxHighlight' ) ) {
+			$syntaxHighlight = new SyntaxHighlight(
+				$services->getMainConfig(),
+				$services->getMainWANObjectCache()
+			);
 			$out = preg_replace_callback(
 				'/<pre>\s*<code(\s+class="language-(.*)")?>(.*)<\/code>\s*<\/pre>/isU',
-				function ( $matches ) use ( &$parser ) {
+				function ( $matches ) use ( $syntaxHighlight, $parser ) {
 					// If there's no language, just remove the nested <code> tag
 					if ( empty( $matches[1] ) ) {
 						return '<pre>' . $matches[3] . '</pre>';
 					}
 					// If a language is specified, let SyntaxHighlight handle it
 					$args = array('lang' => $matches[2]);
-					return SyntaxHighlight::parserHook( html_entity_decode( $matches[3] ), $args, $parser );
+					return $syntaxHighlight->parserHook( html_entity_decode( $matches[3] ), $args, $parser );
 				},
 				$out
 			);
@@ -107,7 +127,7 @@ class WikiMarkdown {
 
 		// If Parsedown Extended is available with tasks turned on, then convert them to OOUI checkboxes
 		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->options['lists']['tasks'] ?? true ) ) {
-			$parser->enableOOUI();
+			$parser->getOutput()->setOutputFlag( ParserOutputFlags::ENABLE_OOUI );
 			$out = preg_replace_callback(
 				'/<input\s+type="checkbox"(.*)>/isU',
 				function ( $matches ) {
@@ -123,36 +143,42 @@ class WikiMarkdown {
 
 		// If Parsedown Extended is available with math turned on and the Math extension is loaded, then use it to perform math formatting
 		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->options['math'] ?? false ) && ExtensionRegistry::getInstance()->isLoaded( 'Math' ) ) {
+			$mathHooks = new ParserHooksHandler(
+				$services->getService( 'Math.RendererFactory' ),
+				$services->getUserOptionsLookup(),
+				$services->getHookContainer()
+			);
+
 			$out = preg_replace_callback(
 				'/(?<!\\\\)\\\\\[(.*)(?<!\\\\)\\\\\]/isU',
-				function ( $matches ) use ( &$parser ) {
+				function ( $matches ) use ( $mathHooks, $parser ) {
 					$args = array('display' => 'block');
-					return MediaWiki\Extension\Math\Hooks::mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
+					return $mathHooks->mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
 				},
 				$out
 			);
 			$out = preg_replace_callback(
 				'/(?<!\\\\)\$\$(.*)(?<!\\\\)\$\$/isU',
-				function ( $matches ) use ( &$parser ) {
+				function ( $matches ) use ( $mathHooks, $parser ) {
 					$args = array('display' => 'block');
-					return MediaWiki\Extension\Math\Hooks::mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
+					return $mathHooks->mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
 				},
 				$out
 			);
 			$out = preg_replace_callback(
 				'/(?<!\\\\)\\\\\((.*)(?<!\\\\)\\\\\)/isU',
-				function ( $matches ) use ( &$parser ) {
+				function ( $matches ) use ( $mathHooks, $parser ) {
 					$args = array('display' => 'inline');
-					return MediaWiki\Extension\Math\Hooks::mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
+					return $mathHooks->mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
 				},
 				$out
 			);
 			if ( self::getParsedown()->options['math']['single_dollar'] ?? false ) {
 				$out = preg_replace_callback(
 					'/(?<!\\\\)\$(.*)(?<!\\\\)\$/isU',
-					function ( $matches ) use ( &$parser ) {
+					function ( $matches ) use ( $mathHooks, $parser ) {
 						$args = array('display' => 'inline');
-						return MediaWiki\Extension\Math\Hooks::mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
+						return $mathHooks->mathTagHook( html_entity_decode( $matches[1] ), $args, $parser );
 					},
 					$out
 				);
@@ -324,7 +350,7 @@ class WikiMarkdown {
 
 		if (!$parsedown) {
 			$parsedown = $wgAllowMarkdownExtended
-				? new \ParsedownExtended($wgParsedownExtendedParameters)
+				? new ParsedownExtended( $wgParsedownExtendedParameters )
 				: ($wgAllowMarkdownExtra
 					? new \ParsedownExtra()
 					: new \Parsedown());

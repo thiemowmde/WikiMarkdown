@@ -4,7 +4,7 @@ This is a [MediaWiki](https://www.mediawiki.org/) extension that allows for mark
 
 # Requirements
 
-This version of the extension has been tested with Parsedown 1.7.4, Parsedown Extra 0.8.1, and MediaWiki 1.35.
+This version of the extension has been tested with Parsedown 1.8.0, Parsedown Extra 0.9.0, and MediaWiki 1.43.
 
 # Installation
 

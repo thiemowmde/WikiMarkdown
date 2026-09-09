@@ -1,6 +1,8 @@
 <?php
 
+use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 
 /**
  * Markdown Content Model
@@ -28,7 +30,7 @@ class MarkdownContent extends TextContent {
         $output = new ParserOutput();
         if ( !$generateHtml ) {
 			// We don't need the actual HTML
-			$output->setText( '' );
+			$output->setContentHolderText( '' );
 			return $output;
 		}
         $wikitext = Html::rawElement(
