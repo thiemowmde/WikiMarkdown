@@ -125,7 +125,7 @@ class WikiMarkdown {
 		}
 
 		// If Parsedown Extended is available with tasks turned on, then convert them to OOUI checkboxes
-		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->options['lists']['tasks'] ?? true ) ) {
+		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->config()->get( 'lists.tasks' ) ?? true ) ) {
 			$parser->getOutput()->setOutputFlag( ParserOutputFlags::ENABLE_OOUI );
 			$out = preg_replace_callback(
 				'/<input\s+type="checkbox"(.*)>/isU',
@@ -141,7 +141,7 @@ class WikiMarkdown {
 		}
 
 		// If Parsedown Extended is available with math turned on and the Math extension is loaded, then use it to perform math formatting
-		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->options['math'] ?? false ) && ExtensionRegistry::getInstance()->isLoaded( 'Math' ) ) {
+		if ( $wgAllowMarkdownExtended && ( false !== self::getParsedown()->config()->get( 'math.enabled' ) ?? false ) && ExtensionRegistry::getInstance()->isLoaded( 'Math' ) ) {
 			$mathHooks = new ParserHooksHandler(
 				$services->getService( 'Math.RendererFactory' ),
 				$services->getUserOptionsLookup(),
@@ -172,7 +172,7 @@ class WikiMarkdown {
 				},
 				$out
 			);
-			if ( self::getParsedown()->options['math']['single_dollar'] ?? false ) {
+			if ( self::getParsedown()->config()->get( 'math.single_dollar' ) ?? false ) {
 				$out = preg_replace_callback(
 					'/(?<!\\\\)\$(.*)(?<!\\\\)\$/isU',
 					function ( $matches ) use ( $mathHooks, $parser ) {
