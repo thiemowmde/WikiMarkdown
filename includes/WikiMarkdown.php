@@ -45,9 +45,8 @@ class WikiMarkdown {
 	 * @throws MWException
 	 */
 	public static function parserHook( $text, $args, $parser ) {
-		global $wgAllowMarkdownExtended;
-
 		$services = MediaWikiServices::getInstance();
+		$wgAllowMarkdownExtended = $services->getMainConfig()->get( 'AllowMarkdownExtended' );
 
 		// Replace strip markers (For e.g. {{#tag:markdown|<nowiki>...}})
 		$out = $parser->getStripState()->unstripNoWiki( $text );
@@ -344,14 +343,15 @@ class WikiMarkdown {
 	protected static function getParsedown()
 	{
 		static $parsedown;
-		global $wgAllowMarkdownExtra;
-		global $wgAllowMarkdownExtended;
-		global $wgParsedownExtendedParameters;
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		$wgAllowMarkdownExtra = $config->get( 'AllowMarkdownExtra' );
+		$wgAllowMarkdownExtended = $config->get( 'AllowMarkdownExtended' );
+		$wgParsedownExtendedParameters = $config->get( 'ParsedownExtendedParameters' );
 
 		if (!$parsedown) {
 			$parsedown = $wgAllowMarkdownExtended
 				? new ParsedownExtended( $wgParsedownExtendedParameters )
-				: ($wgAllowMarkdownExtra
+				: ( $wgAllowMarkdownExtra
 					? new \ParsedownExtra()
 					: new \Parsedown());
 		}
